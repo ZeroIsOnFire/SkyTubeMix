@@ -4,11 +4,12 @@ import android.os.Bundle;
 import android.os.Environment;
 
 import androidx.preference.Preference;
-import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.ListPreference;
 
 import com.obsez.android.lib.filechooser.ChooserDialog;
 
 import free.rm.skytube.R;
+import free.rm.skytube.app.PerformanceMode;
 import free.rm.skytube.app.SkyTubeApp;
 import free.rm.skytube.businessobjects.YouTube.VideoStream.VideoQuality;
 import free.rm.skytube.businessobjects.YouTube.VideoStream.VideoResolution;
@@ -21,6 +22,17 @@ public class NetworkPreferenceFragment extends BasePreferenceFragment {
     @Override
     protected void showPreferencesInternal(String rootKey) {
         addPreferencesFromResource(R.xml.preference_downloads);
+
+        final ListPreference performanceModePreference =
+                findPreference(getString(R.string.pref_key_performance_mode));
+        performanceModePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+            final PerformanceMode mode = PerformanceMode.fromValue(String.valueOf(newValue));
+            if (mode == null) {
+                return false;
+            }
+            SkyTubeApp.getSettings().applyPerformanceMode(mode);
+            return true;
+        });
 
         final Preference folderChooser = findPreference(getString(R.string.pref_key_video_download_folder));
         folderChooser.setOnPreferenceClickListener(preference -> {

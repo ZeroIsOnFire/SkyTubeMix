@@ -554,6 +554,44 @@
     <string name="pref_key_continuous_mix_playback" translatable="false">pref_key_continuous_mix_playback</string>
     <string name="pref_title_continuous_mix_playback">Continuous playback with Mix</string>
     <string name="pref_summary_continuous_mix_playback">Automatically play videos from the YouTube Mix after a standalone video ends.</string>
+    <string name="pref_key_performance_mode" translatable="false">pref_key_performance_mode</string>
+    <string name="pref_title_performance_mode">Performance mode</string>
+    <string name="pref_summary_performance_mode">Last applied preset: %s. Manual video-quality changes are preserved.</string>
+    <string name="performance_mode_standard">Standard mode</string>
+    <string name="performance_mode_low">Low performance mode</string>
+    <string name="performance_mode_dialog_title">Choose performance mode</string>
+    <string name="performance_mode_dialog_description">Low performance mode adjusts video-quality defaults for older or slower devices. Standard mode keeps SkyTube\'s normal behavior.</string>
+    <string-array name="performance_mode_entries">
+        <item>@string/performance_mode_standard</item>
+        <item>@string/performance_mode_low</item>
+    </string-array>
+    <string-array name="performance_mode_values" translatable="false">
+        <item>standard</item>
+        <item>low</item>
+    </string-array>
+    <string name="pref_category_youtube_compatibility">YouTube compatibility</string>
+    <string name="pref_key_youtube_client_mode" translatable="false">pref_key_youtube_client_mode</string>
+    <string name="pref_title_youtube_client_mode">Stream client — recommended mode available</string>
+    <string name="pref_summary_youtube_client_mode">Selected: %s. VisionOS only may block some kids content; fallback automatically tries the original Android client.</string>
+    <string name="youtube_client_mode_vision_fallback">VisionOS with fallback (recommended)</string>
+    <string name="youtube_client_mode_vision_only">VisionOS without fallback</string>
+    <string name="youtube_client_mode_vision_only_warning">VisionOS only (may block some kids content)</string>
+    <string name="youtube_client_mode_standard_android">Standard Android (original SkyTube)</string>
+    <string name="youtube_client_mode_dialog_title">Choose the YouTube client</string>
+    <string name="youtube_client_mode_dialog_description">VisionOS usually provides direct stream links without an extra token, but YouTube may reject some kids content. The recommended mode keeps this advantage and automatically tries standard Android when that happens.</string>
+    <string name="youtube_client_mode_vision_fallback_value" translatable="false">vision_os_with_fallback</string>
+    <string name="youtube_client_mode_vision_only_value" translatable="false">vision_os_only</string>
+    <string name="youtube_client_mode_standard_android_value" translatable="false">standard_android</string>
+    <string-array name="youtube_client_mode_entries">
+        <item>@string/youtube_client_mode_vision_fallback</item>
+        <item>@string/youtube_client_mode_vision_only_warning</item>
+        <item>@string/youtube_client_mode_standard_android</item>
+    </string-array>
+    <string-array name="youtube_client_mode_values" translatable="false">
+        <item>@string/youtube_client_mode_vision_fallback_value</item>
+        <item>@string/youtube_client_mode_vision_only_value</item>
+        <item>@string/youtube_client_mode_standard_android_value</item>
+    </string-array>
     <string name="pref_video_continuous_repeat_toggle">Continuous repetition</string>
     <string name="pref_key_enable_immersive_mode" translatable="false">pref_key_enable_immersive_mode</string>
     <string name="pref_title_enable_immersive_mode">Immersive mode</string>
@@ -763,7 +801,7 @@
         <item>BEST_QUALITY</item>
     </string-array>
     <string-array name="pref_network_usage_display">
-        <item>Least Bandwith</item>
+        <item>Least Bandwidth</item>
         <item>Best Quality</item>
     </string-array>
     <string name="pref_key_default_content_country" translatable="false">pref_key_default_content_country</string>

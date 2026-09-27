@@ -138,8 +138,8 @@ public class NewPipeService {
      * @return The {@link StreamInfo}.
      */
     private StreamInfo getStreamInfoByUrl(String videoUrl) throws IOException, ExtractionException {
-        // actual extraction
-        return StreamInfo.getInfo(streamingService, videoUrl);
+        LinkHandler linkHandler = streamingService.getStreamLHFactory().fromUrl(videoUrl);
+        return StreamInfo.getInfo(createStreamExtractor(linkHandler));
     }
 
     public ContentId getVideoId(String url) throws ParsingException {
@@ -203,8 +203,12 @@ public class NewPipeService {
     public StreamInfo getStreamInfoByVideoId(String videoId) throws ExtractionException, IOException {
         SkyTubeApp.nonUiThread();
         LinkHandler linkHandler = streamingService.getStreamLHFactory().fromId(videoId);
-        StreamExtractor streamExtractor = streamingService.getStreamExtractor(linkHandler);
-        return StreamInfo.getInfo(streamExtractor);
+        return StreamInfo.getInfo(createStreamExtractor(linkHandler));
+    }
+
+    private StreamExtractor createStreamExtractor(LinkHandler linkHandler) {
+        return new ConfigurableYoutubeStreamExtractor(
+                streamingService, linkHandler, settings.getYoutubeClientMode());
     }
 
     /**
@@ -416,7 +420,7 @@ public class NewPipeService {
     public YouTubeVideo getDetails(String videoId) throws ExtractionException, IOException {
         SkyTubeApp.nonUiThread();
         LinkHandler url = streamingService.getStreamLHFactory().fromId(videoId);
-        StreamExtractor extractor = streamingService.getStreamExtractor(url);
+        StreamExtractor extractor = createStreamExtractor(url);
         extractor.fetchPage();
 
         DateInfo uploadDate = new DateInfo(extractor.getUploadDate());

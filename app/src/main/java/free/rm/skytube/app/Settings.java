@@ -19,9 +19,13 @@ package free.rm.skytube.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Point;
 import android.os.Build;
 import android.os.Environment;
+import android.view.Display;
+import android.view.WindowManager;
 
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.preference.PreferenceManager;
 
@@ -45,6 +49,7 @@ import free.rm.skytube.gui.fragments.SubscriptionsFeedFragment;
  */
 public class Settings {
     private final SkyTubeApp app;
+    private final SharedPreferences sharedPreferences;
     private static final String TUTORIAL_COMPLETED = "YouTubePlayerActivity.TutorialCompleted";
     private static final String LATEST_RELEASE_NOTES_DISPLAYED = "Settings.LATEST_RELEASE_NOTES_DISPLAYED";
     private static final String PRIVACY_CONTROL_CHECK_DONE = "Settings.PRIVACY_CONTROL_CHECK_DONE";
@@ -56,11 +61,17 @@ public class Settings {
     private static final long   REFRESH_TIME_IN_MS = REFRESH_TIME_HOURS * (1000L*3600L);
 
     Settings(SkyTubeApp app) {
+        this(app, PreferenceManager.getDefaultSharedPreferences(app));
+    }
+
+    Settings(SkyTubeApp app, SharedPreferences sharedPreferences) {
         this.app = app;
+        this.sharedPreferences = sharedPreferences;
     }
 
     void migrate() {
         SharedPreferences sharedPreferences = getSharedPreferences();
+        final boolean hadExistingPreferences = !sharedPreferences.getAll().isEmpty();
         migrate(sharedPreferences, "pref_preferred_resolution", R.string.pref_key_maximum_res);
         migrate(sharedPreferences, "pref_preferred_resolution_mobile", R.string.pref_key_maximum_res_mobile);
         migrate(sharedPreferences, "pref_key_video_preferred_resolution", R.string.pref_key_video_download_maximum_resolution);
@@ -69,10 +80,22 @@ public class Settings {
         setDefault(sharedPreferences, R.string.pref_key_video_quality_on_mobile, VideoQuality.LEAST_BANDWIDTH.name());
         setDefault(sharedPreferences, R.string.pref_key_use_newer_formats, Build.VERSION.SDK_INT > 16);
         setDefault(sharedPreferences, R.string.pref_key_playback_speed, "1.0");
+        setDefault(sharedPreferences, R.string.pref_key_continuous_mix_playback, true);
         Set<String> defaultTabs = new HashSet<>();
         defaultTabs.add(MainFragment.FEATURED_VIDEOS_FRAGMENT);
         setDefault(sharedPreferences, R.string.pref_key_hide_tabs, defaultTabs);
         setDefault(sharedPreferences, R.string.pref_key_default_tab_name, MainFragment.MOST_POPULAR_VIDEOS_FRAGMENT);
+
+        // Existing installations should not be interrupted by a new first-run dialog or have
+        // their manually selected quality settings overwritten.  A truly fresh installation had
+        // no preferences before this migration and deliberately keeps the mode absent.
+        final String performanceModeKey = getStr(R.string.pref_key_performance_mode);
+        if (hadExistingPreferences
+                && PerformanceMode.fromValue(sharedPreferences.getString(performanceModeKey, null)) == null) {
+            sharedPreferences.edit()
+                    .putString(performanceModeKey, PerformanceMode.STANDARD.getValue())
+                    .apply();
+        }
     }
 
     private void migrate(SharedPreferences sharedPreferences, String oldKey, @StringRes int newKey) {
@@ -199,21 +222,21 @@ public class Settings {
      */
     public StreamSelectionPolicy getDesiredVideoResolution(boolean forDownload, boolean onMetered) {
         SharedPreferences prefs = getSharedPreferences();
-        String maxKey = SkyTubeApp.getStr(forDownload ? R.string.pref_key_video_download_maximum_resolution : R.string.pref_key_maximum_res);
+        String maxKey = getStr(forDownload ? R.string.pref_key_video_download_maximum_resolution : R.string.pref_key_maximum_res);
         String maxResIdValue = prefs.getString(maxKey, Integer.toString(VideoResolution.DEFAULT_VIDEO_RES_ID));
 
-        String minKey = SkyTubeApp.getStr(forDownload ? R.string.pref_key_video_download_minimum_resolution : R.string.pref_key_minimum_res);
+        String minKey = getStr(forDownload ? R.string.pref_key_video_download_minimum_resolution : R.string.pref_key_minimum_res);
         String minResIdValue = prefs.getString(minKey, null);
 
-        String qualityKey = SkyTubeApp.getStr(forDownload ? R.string.pref_key_video_quality_for_downloads : R.string.pref_key_video_quality);
+        String qualityKey = getStr(forDownload ? R.string.pref_key_video_quality_for_downloads : R.string.pref_key_video_quality);
         String qualityValue = prefs.getString(qualityKey, null);
 
         // if on metered network, use the preferred resolution under metered network if defined
         if (onMetered) {
             // default res for mobile network = that of wifi
-            maxResIdValue = prefs.getString(SkyTubeApp.getStr(R.string.pref_key_maximum_res_mobile), maxResIdValue);
-            minResIdValue = prefs.getString(SkyTubeApp.getStr(R.string.pref_key_minimum_res_mobile), minResIdValue);
-            qualityValue = prefs.getString(SkyTubeApp.getStr(R.string.pref_key_video_quality_on_mobile), qualityValue);
+            maxResIdValue = prefs.getString(getStr(R.string.pref_key_maximum_res_mobile), maxResIdValue);
+            minResIdValue = prefs.getString(getStr(R.string.pref_key_minimum_res_mobile), minResIdValue);
+            qualityValue = prefs.getString(getStr(R.string.pref_key_video_quality_on_mobile), qualityValue);
         }
         VideoResolution maxResolution = VideoResolution.videoResIdToVideoResolution(maxResIdValue);
         VideoResolution minResolution = VideoResolution.videoResIdToVideoResolution(minResIdValue);
@@ -225,7 +248,7 @@ public class Settings {
             quality = VideoQuality.valueOf(qualityValue);
         }
 
-        boolean useNewFormats = prefs.getBoolean(SkyTubeApp.getStr(R.string.pref_key_use_newer_formats), false);
+        boolean useNewFormats = prefs.getBoolean(getStr(R.string.pref_key_use_newer_formats), false);
 
         return new StreamSelectionPolicy(!forDownload && useNewFormats, maxResolution, minResolution, quality);
     }
@@ -235,7 +258,7 @@ public class Settings {
     }
 
     public boolean isDisableSearchHistory() {
-        return getSharedPreferences().getBoolean(SkyTubeApp.getStr(R.string.pref_key_disable_search_history), false);
+        return getSharedPreferences().getBoolean(getStr(R.string.pref_key_disable_search_history), false);
     }
 
     public int getFeedUpdaterInterval() {
@@ -251,11 +274,102 @@ public class Settings {
     }
 
     public boolean isContinuousMixPlaybackEnabled() {
-        return getPreference(R.string.pref_key_continuous_mix_playback, false);
+        return getPreference(R.string.pref_key_continuous_mix_playback, true);
     }
 
     public void setContinuousMixPlaybackEnabled(boolean enabled) {
         setPreference(R.string.pref_key_continuous_mix_playback, enabled);
+    }
+
+    public YoutubeClientMode getYoutubeClientMode() {
+        return YoutubeClientMode.fromValue(getPreference(
+                R.string.pref_key_youtube_client_mode,
+                YoutubeClientMode.VISION_OS_WITH_FALLBACK.getValue()));
+    }
+
+    public boolean hasYoutubeClientMode() {
+        return getSharedPreferences().contains(getStr(R.string.pref_key_youtube_client_mode));
+    }
+
+    public void setYoutubeClientMode(YoutubeClientMode mode) {
+        setPreference(R.string.pref_key_youtube_client_mode, mode.getValue());
+        Logger.i(this, "YouTube client mode selected: %s", mode.getValue());
+    }
+
+    @Nullable
+    public PerformanceMode getPerformanceMode() {
+        return PerformanceMode.fromValue(getPreference(R.string.pref_key_performance_mode, (String) null));
+    }
+
+    public boolean hasPerformanceMode() {
+        return getPerformanceMode() != null;
+    }
+
+    /**
+     * Stores the initial choice. Standard preserves the existing playback defaults, while Low
+     * immediately applies its playback-only preset.
+     */
+    public void selectInitialPerformanceMode(PerformanceMode mode) {
+        if (mode == PerformanceMode.LOW) {
+            applyPerformanceMode(mode);
+        } else {
+            setPreference(R.string.pref_key_performance_mode, PerformanceMode.STANDARD.getValue());
+            Logger.i(this, "Performance mode selected: standard");
+        }
+    }
+
+    /**
+     * Applies a playback preference preset. It intentionally leaves minimum-resolution and
+     * download preferences unchanged, and it is never called automatically on later launches.
+     *
+     * @return the maximum resolution applied, or 1080p for Standard mode
+     */
+    public VideoResolution applyPerformanceMode(PerformanceMode mode) {
+        final SharedPreferences.Editor editor = getSharedPreferences().edit();
+        final String maximumResolutionKey = getStr(R.string.pref_key_maximum_res);
+        final String meteredMaximumResolutionKey = getStr(R.string.pref_key_maximum_res_mobile);
+        final String qualityKey = getStr(R.string.pref_key_video_quality);
+        final String meteredQualityKey = getStr(R.string.pref_key_video_quality_on_mobile);
+        final VideoResolution maximumResolution;
+
+        editor.putString(getStr(R.string.pref_key_performance_mode), mode.getValue());
+        if (mode == PerformanceMode.LOW) {
+            final Point realSize = getRealDisplaySize();
+            final int capability = Math.min(realSize.x, realSize.y);
+            maximumResolution = VideoResolution.highestSupportedAtMost(capability);
+            final String resolutionId = Integer.toString(maximumResolution.getId());
+
+            editor.putString(qualityKey, VideoQuality.LEAST_BANDWIDTH.name());
+            editor.putString(meteredQualityKey, VideoQuality.LEAST_BANDWIDTH.name());
+            editor.putString(maximumResolutionKey, resolutionId);
+            editor.putString(meteredMaximumResolutionKey, resolutionId);
+
+            Logger.i(this, "Detected display size: %sx%s", realSize.x, realSize.y);
+            Logger.i(this, "Selected low-performance max resolution: %s", maximumResolution);
+            Logger.i(this, "Low-performance preset applied");
+        } else {
+            maximumResolution = VideoResolution.RES_1080P;
+            editor.putString(qualityKey, VideoQuality.BEST_QUALITY.name());
+            editor.putString(meteredQualityKey, VideoQuality.LEAST_BANDWIDTH.name());
+            editor.putString(maximumResolutionKey, Integer.toString(maximumResolution.getId()));
+            editor.remove(meteredMaximumResolutionKey);
+        }
+        editor.apply();
+
+        Logger.i(this, "Performance mode selected: %s", mode.getValue());
+        Logger.i(this, "Performance preset left download preferences unchanged");
+        return maximumResolution;
+    }
+
+    private Point getRealDisplaySize() {
+        final WindowManager windowManager =
+                (WindowManager) app.getSystemService(Context.WINDOW_SERVICE);
+        final Point realSize = new Point();
+        if (windowManager != null) {
+            final Display display = windowManager.getDefaultDisplay();
+            display.getRealSize(realSize);
+        }
+        return realSize;
     }
 
     public boolean isEnableVideoBlocker() {
@@ -398,11 +512,11 @@ public class Settings {
     }
 
     private String getPreference(@StringRes int resId, String defaultValue) {
-        return getSharedPreferences().getString(SkyTubeApp.getStr(resId), defaultValue);
+        return getSharedPreferences().getString(getStr(resId), defaultValue);
     }
 
     private boolean getPreference(@StringRes int resId, boolean defaultValue) {
-        return getSharedPreferences().getBoolean(SkyTubeApp.getStr(resId), defaultValue);
+        return getSharedPreferences().getBoolean(getStr(resId), defaultValue);
     }
 
     private boolean getPreference(String preference, boolean defaultValue) {
@@ -410,11 +524,11 @@ public class Settings {
     }
 
     private Set<String> getPreference(@StringRes int resId, Set<String> defaultValue) {
-        return getSharedPreferences().getStringSet(SkyTubeApp.getStr(resId), defaultValue);
+        return getSharedPreferences().getStringSet(getStr(resId), defaultValue);
     }
 
     private SharedPreferences getSharedPreferences() {
-        return PreferenceManager.getDefaultSharedPreferences(app) ;
+        return sharedPreferences;
     }
 
     public String getDisplayedReleaseNoteTag() {

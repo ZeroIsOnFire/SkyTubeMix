@@ -47,7 +47,7 @@
 		app:key="@string/pref_key_continuous_mix_playback"
 		app:title="@string/pref_title_continuous_mix_playback"
 		app:summary="@string/pref_summary_continuous_mix_playback"
-		app:defaultValue="false"
+		app:defaultValue="true"
 		app:iconSpaceReserved="false" />
 
 	<CheckBoxPreference

@@ -47,6 +47,21 @@
     <string name="pref_summary_disable_screen_gestures">Desliga os gestos para controlar o volume, o brilho e avançar/retroceder nos vídeos.</string>
     <string name="pref_title_continuous_mix_playback">Reprodução contínua com Mix</string>
     <string name="pref_summary_continuous_mix_playback">Reproduz automaticamente vídeos do Mix do YouTube após o término de um vídeo avulso.</string>
+    <string name="pref_title_performance_mode">Modo de desempenho</string>
+    <string name="pref_summary_performance_mode">Último perfil aplicado: %s. Alterações manuais na qualidade de vídeo são preservadas.</string>
+    <string name="performance_mode_standard">Modo padrão</string>
+    <string name="performance_mode_low">Modo de baixo desempenho</string>
+    <string name="performance_mode_dialog_title">Escolha o modo de desempenho</string>
+    <string name="performance_mode_dialog_description">O modo de baixo desempenho ajusta as configurações padrão de qualidade de vídeo para dispositivos antigos ou mais lentos. O modo padrão mantém o comportamento normal do SkyTube.</string>
+    <string name="pref_category_youtube_compatibility">Compatibilidade com o YouTube</string>
+    <string name="pref_title_youtube_client_mode">Cliente de reprodução — modo recomendado disponível</string>
+    <string name="pref_summary_youtube_client_mode">Selecionado: %s. Somente VisionOS pode bloquear alguns conteúdos infantis; o fallback tenta automaticamente o Android original.</string>
+    <string name="youtube_client_mode_vision_fallback">VisionOS com fallback (recomendado)</string>
+    <string name="youtube_client_mode_vision_only">VisionOS sem fallback</string>
+    <string name="youtube_client_mode_vision_only_warning">Somente VisionOS (pode bloquear conteúdo infantil)</string>
+    <string name="youtube_client_mode_standard_android">Padrão Android (SkyTube original)</string>
+    <string name="youtube_client_mode_dialog_title">Escolha o cliente do YouTube</string>
+    <string name="youtube_client_mode_dialog_description">O VisionOS costuma fornecer links diretos sem token adicional, mas o YouTube pode rejeitar alguns conteúdos infantis. O modo recomendado mantém essa vantagem e tenta automaticamente o Android padrão quando isso acontecer.</string>
     <string name="pref_title_default_tab">Guia padrão</string>
     <string name="pref_hide_tabs_restart">Reinicie o SkyTube para usar esses separadores.</string>
     <string name="pref_video_continuous_repeat_toggle">Repetição continua</string>
@@ -142,6 +157,10 @@
     <string name="pref_key_video_quality_title">Seleção de Qualidade de Vídeo</string>
     <string name="pref_key_video_quality_metered_summary">Otimize para: %s</string>
     <string name="pref_key_video_quality_for_downloads_title">Seleção de qualidade dos vídeos para Downloads</string>
+    <string-array name="pref_network_usage_display">
+        <item>Menor consumo de dados</item>
+        <item>Melhor qualidade</item>
+    </string-array>
     <string name="pref_summary_channel_blacklist">Uma lista de canais bloqueados.</string>
     <string name="channel_whitelist_updated">Lista de canais permitidos atualizada. Atualize os vídeos para usar a nova lista de canais permitidos.</string>
     <string name="pref_title_preferred_languages">Idioma(s) preferido(s)</string>

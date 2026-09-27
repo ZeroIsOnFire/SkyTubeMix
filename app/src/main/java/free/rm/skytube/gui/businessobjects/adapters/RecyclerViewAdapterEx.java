@@ -68,8 +68,9 @@ public abstract class RecyclerViewAdapterEx<T, HolderType extends RecyclerView.V
 	 */
 	public void appendList(List<T> l) {
 		if (l != null  && !l.isEmpty()) {
+			int insertionStart = list.size();
 			list.addAll(l);
-			notifyDataSetChanged();
+			notifyItemRangeInserted(insertionStart, l.size());
 		}
 	}
 
@@ -88,7 +89,7 @@ public abstract class RecyclerViewAdapterEx<T, HolderType extends RecyclerView.V
 	protected void append(T item) {
 		if (item != null) {
 			this.list.add(item);
-			this.notifyDataSetChanged();
+			this.notifyItemInserted(this.list.size() - 1);
 		}
 	}
 
@@ -101,7 +102,7 @@ public abstract class RecyclerViewAdapterEx<T, HolderType extends RecyclerView.V
 	protected void remove(int itemPosition) {
 		if (itemPosition >= 0  &&  itemPosition < getItemCount()) {
 			list.remove(itemPosition);
-			this.notifyDataSetChanged();
+			this.notifyItemRemoved(itemPosition);
 		}
 	}
 

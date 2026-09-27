@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ SkyTube
+  ~ Copyright (C) 2026
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation (version 3 of the License).
+  -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingLeft="24dp"
+    android:paddingTop="8dp"
+    android:paddingRight="24dp"
+    android:paddingBottom="16dp">
+
+    <TextView
+        android:id="@+id/performance_mode_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/performance_mode_dialog_description" />
+
+    <RadioGroup
+        android:id="@+id/performance_mode_choices"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp">
+
+        <RadioButton
+            android:id="@+id/performance_mode_standard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/performance_mode_standard" />
+
+        <RadioButton
+            android:id="@+id/performance_mode_low"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/performance_mode_low" />
+    </RadioGroup>
+
+</LinearLayout>

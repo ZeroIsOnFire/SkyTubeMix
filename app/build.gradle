@@ -7,7 +7,7 @@ android {
     namespace 'free.rm.skytube'
 
     defaultConfig {
-        applicationId "free.rm.skytube"
+        applicationId "free.rm.skytubemix"
         minSdkVersion 19
         //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 28
@@ -39,7 +39,7 @@ android {
         snapshot {
             initWith debug
             applicationIdSuffix ".snapshot"
-            resValue "string", "app_name", "SkyTube Snapshot"
+            resValue "string", "app_name", "SkyTubeMix Snapshot"
         }
     }
     flavorDimensions "skytube"
@@ -47,7 +47,7 @@ android {
         // 100% Open-Source Edition
         oss {
             applicationIdSuffix ".oss"
-            resValue "string", "app_name", "SkyTube"
+            resValue "string", "app_name", "SkyTubeMix"
             resValue "string", "app_flavor", "OSS"
             dimension "skytube"
             buildConfigField 'String[]', 'YOUTUBE_API_KEYS', '{}'
@@ -55,7 +55,7 @@ android {
         // 99% Open-source edition:  uses the YouTube Player Jar [i.e. proprietary module - optional usage]
         extra {
             applicationIdSuffix ".extra"
-            resValue "string", "app_name", "SkyTube Extra"
+            resValue "string", "app_name", "SkyTubeMix Extra"
             resValue "string", "app_flavor", "Extra"
             dimension "skytube"
         }

@@ -24,6 +24,7 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Choreographer;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -65,7 +66,9 @@ import free.rm.skytube.databinding.DialogEnterVideoUrlBinding;
 import free.rm.skytube.gui.businessobjects.BlockedVideosDialog;
 import free.rm.skytube.gui.businessobjects.CleanerDialog;
 import free.rm.skytube.gui.businessobjects.PinUtils;
+import free.rm.skytube.gui.businessobjects.PerformanceModeDialog;
 import free.rm.skytube.gui.businessobjects.PrivacyControlDialog;
+import free.rm.skytube.gui.businessobjects.YoutubeClientModeDialog;
 import free.rm.skytube.gui.businessobjects.adapters.SearchHistoryCursorAdapter;
 import free.rm.skytube.gui.businessobjects.fragments.FragmentEx;
 import free.rm.skytube.gui.businessobjects.updates.UpdatesCheckerTask;
@@ -120,23 +123,14 @@ public class MainActivity extends BaseActivity {
 			TLSSocketFactory.setAsDefault();
 		}
 
-		// check for updates (one time only)
-		if (!updatesCheckerTaskRan) {
-			new UpdatesCheckerTask(this, false).executeInParallel();
-			updatesCheckerTaskRan = true;
-		}
-
 		EventBus.getInstance().registerMainActivityListener(this);
 
 		SkyTubeApp.setFeedUpdateInterval(SkyTubeApp.getSettings().getFeedUpdaterInterval());
-		// Delete any missing downloaded videos
-		new DownloadedVideosDb.RemoveMissingVideosTask().executeInParallel();
 
 		setContentView(binding.getRoot());
+		scheduleNonEssentialStartupTasks();
 
-		// Show the privacy control dialog once (i.e. the dialog that offers to enable/disable
-		// the SponsorBlock and Return YouTube Dislike features), if it was never run before.
-		showPrivacyControlCheckIfNeeded();
+		showStartupDialogs();
 
 		// The Extra variant needs to initialize some Fragments that are used for Chromecast control. This is done in onLayoutSet of BaseActivity.
 		// The OSS variant has a no-op version of this method, since it doesn't need to do anything else here.
@@ -155,6 +149,20 @@ public class MainActivity extends BaseActivity {
 		}
 	}
 
+	/** Starts disk and network housekeeping only after the first UI work has drained. */
+	private void scheduleNonEssentialStartupTasks() {
+		Choreographer.getInstance().postFrameCallback(
+				frameTimeNanos -> binding.getRoot().post(this::runNonEssentialStartupTasks));
+	}
+
+	private void runNonEssentialStartupTasks() {
+		if (!updatesCheckerTaskRan) {
+			new UpdatesCheckerTask(this, false).executeInParallel();
+			updatesCheckerTaskRan = true;
+		}
+		new DownloadedVideosDb.RemoveMissingVideosTask().executeInParallel();
+	}
+
 	@Override
 	protected void onNewIntent(Intent intent) {
 		super.onNewIntent(intent);
@@ -169,15 +177,40 @@ public class MainActivity extends BaseActivity {
 	 * YouTube Dislike features) on app startup, but only once ever and only if at least one of
 	 * those features is currently disabled.
 	 */
-	private void showPrivacyControlCheckIfNeeded() {
+	private void showStartupDialogs() {
+		showPrivacyControlCheckIfNeeded(this::showPerformanceModeCheckIfNeeded);
+	}
+
+	private void showPrivacyControlCheckIfNeeded(Runnable onComplete) {
 		final Settings settings = SkyTubeApp.getSettings();
 		if (settings.wasPrivacyControlCheckDone()) {
+			onComplete.run();
 			return;
 		}
 		settings.setPrivacyControlCheckDone();
 		if (!settings.isSponsorblockEnabled() || !settings.isUseDislikeApi()) {
-			new PrivacyControlDialog(this).show();
+			new PrivacyControlDialog(this).show(onComplete);
+		} else {
+			onComplete.run();
 		}
+	}
+
+	private void showPerformanceModeCheckIfNeeded() {
+		if (isFinishing() || isDestroyed()) {
+			return;
+		}
+		if (SkyTubeApp.getSettings().hasPerformanceMode()) {
+			showYoutubeClientModeCheckIfNeeded();
+			return;
+		}
+		new PerformanceModeDialog(this, this::showYoutubeClientModeCheckIfNeeded).show();
+	}
+
+	private void showYoutubeClientModeCheckIfNeeded() {
+		if (isFinishing() || isDestroyed() || SkyTubeApp.getSettings().hasYoutubeClientMode()) {
+			return;
+		}
+		new YoutubeClientModeDialog(this, null).show();
 	}
 
 	@Override
