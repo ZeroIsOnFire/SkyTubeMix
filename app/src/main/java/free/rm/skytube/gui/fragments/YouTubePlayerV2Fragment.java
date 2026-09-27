@@ -18,6 +18,7 @@
 package free.rm.skytube.gui.fragments;
 
 import static free.rm.skytube.gui.activities.YouTubePlayerActivity.YOUTUBE_VIDEO_OBJ;
+import static free.rm.skytube.gui.activities.YouTubePlayerActivity.YOUTUBE_VIDEO_AUTOMATIC_TRANSITION;
 
 import android.app.Activity;
 import android.content.Context;
@@ -139,6 +140,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
     private final CompositeDisposable compositeDisposable = new CompositeDisposable();
     private final ChannelActionHandler actionHandler = new ChannelActionHandler(compositeDisposable);
     private boolean videoIsPlaying;
+    private boolean playbackCompletionReported;
     private PlaybackStateListener playbackStateListener = null;
 
     private SBVideoInfo sponsorBlockVideoInfo;
@@ -216,6 +218,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
     protected void setYouTubeVideo(YouTubeVideo video) {
         this.youTubeVideo = video;
         this.videoId = video != null ? video.getVideoId() : null;
+        playbackCompletionReported = false;
     }
     @Override
     public void onAttach(@NonNull Context context) {
@@ -302,6 +305,12 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
                             playbackStateListener.ended();
                         }
                     }
+
+                    if (playbackState == Player.STATE_ENDED && !playbackCompletionReported
+                            && youTubeVideo != null) {
+                        playbackCompletionReported = true;
+                        listener.onVideoPlaybackCompleted(youTubeVideo);
+                    }
                 }
 
                 @Override
@@ -371,10 +380,15 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
     private void setUpHUDAndPlayVideo() {
         setupInfoDisplay(youTubeVideo);
 
-        new ResumeVideoTask(getContext(), youTubeVideo.getId(), position -> {
-            playerInitialPosition = position;
-            YouTubePlayerV2Fragment.this.loadVideo();
-        }).ask();
+        if (requireActivity().getIntent().getBooleanExtra(YOUTUBE_VIDEO_AUTOMATIC_TRANSITION, false)) {
+            playerInitialPosition = 0;
+            loadVideo();
+        } else {
+            new ResumeVideoTask(getContext(), youTubeVideo.getId(), position -> {
+                playerInitialPosition = position;
+                YouTubePlayerV2Fragment.this.loadVideo();
+            }).ask();
+        }
     }
 
     private void setupInfoDisplay(YouTubeVideo video) {
@@ -519,6 +533,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
      *                                 using mobile network data (i.e. 4g).
      */
     private void loadVideo(boolean showMobileNetworkWarning) {
+        playbackCompletionReported = false;
         Context ctx = getContext();
         compositeDisposable.add(
                 DownloadedVideosDb.getVideoDownloadsDb().getDownloadedFileStatus(ctx, videoId)
@@ -836,6 +851,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
                     player.seekTo(timestamp.longValue() * 1000L);
                 }
             } else {
+                listener.onManualVideoSelected(newVideoId.getId());
                 openVideo(newVideoId);
             }
             return true;
@@ -1267,6 +1283,13 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
     @Override
     public void play() {
         player.setPlayWhenReady(true);
+    }
+
+    @Override
+    public void setTransitionLoading(boolean loading) {
+        if (fragmentBinding != null) {
+            fragmentBinding.loadingVideoView.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
     }
 
     @Override

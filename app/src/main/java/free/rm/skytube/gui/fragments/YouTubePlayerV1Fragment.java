@@ -985,6 +985,9 @@ public class YouTubePlayerV1Fragment extends ImmersiveModeFragment implements Me
 		}
 	}
 
+	@Override
+	public void setTransitionLoading(boolean loading) {}
+
 
 	@Override
 	public void setPlaybackStateListener(PlaybackStateListener listener) {

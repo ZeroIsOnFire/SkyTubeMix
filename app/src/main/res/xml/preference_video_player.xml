@@ -44,6 +44,13 @@
 		app:iconSpaceReserved="false" />
 
 	<CheckBoxPreference
+		app:key="@string/pref_key_continuous_mix_playback"
+		app:title="@string/pref_title_continuous_mix_playback"
+		app:summary="@string/pref_summary_continuous_mix_playback"
+		app:defaultValue="false"
+		app:iconSpaceReserved="false" />
+
+	<CheckBoxPreference
 		app:defaultValue="true"
 		app:key="@string/pref_key_enable_immersive_mode"
 		app:summary="@string/pref_summary_enable_immersive_mode"

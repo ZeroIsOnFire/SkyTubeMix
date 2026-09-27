@@ -27,6 +27,7 @@ import free.rm.skytube.gui.activities.YouTubePlayerActivity;
 import io.reactivex.rxjava3.disposables.Disposable;
 
 import static free.rm.skytube.gui.activities.YouTubePlayerActivity.YOUTUBE_VIDEO_OBJ;
+import static free.rm.skytube.gui.activities.YouTubePlayerActivity.YOUTUBE_PLAYLIST_ID;
 
 /**
  * Launches YouTube player.
@@ -39,8 +40,15 @@ public class YouTubePlayer {
 	 * @param youTubeVideo Video to be viewed.
 	 */
 	public static void launch(YouTubeVideo youTubeVideo, Context context) {
+		launch(youTubeVideo, null, context);
+	}
+
+	public static void launch(YouTubeVideo youTubeVideo, String playlistId, Context context) {
 		Intent i = new Intent(context, YouTubePlayerActivity.class);
 		i.putExtra(YOUTUBE_VIDEO_OBJ, youTubeVideo);
+		if (playlistId != null) {
+			i.putExtra(YOUTUBE_PLAYLIST_ID, playlistId);
+		}
 		context.startActivity(i);
 	}
 

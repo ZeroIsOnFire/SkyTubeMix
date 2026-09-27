@@ -250,6 +250,14 @@ public class Settings {
         return getPreference(R.string.pref_key_disable_screen_gestures, false);
     }
 
+    public boolean isContinuousMixPlaybackEnabled() {
+        return getPreference(R.string.pref_key_continuous_mix_playback, false);
+    }
+
+    public void setContinuousMixPlaybackEnabled(boolean enabled) {
+        setPreference(R.string.pref_key_continuous_mix_playback, enabled);
+    }
+
     public boolean isEnableVideoBlocker() {
         return getPreference(R.string.pref_key_enable_video_blocker, true);
     }

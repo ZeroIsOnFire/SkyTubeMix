@@ -71,4 +71,10 @@
 		android:title="@string/pref_video_continuous_repeat_toggle"
 		app:showAsAction="never" />
 
+	<item
+		android:id="@+id/continuous_mix_playback_toggle"
+		android:checkable="true"
+		android:title="@string/pref_title_continuous_mix_playback"
+		app:showAsAction="never" />
+
 </menu>

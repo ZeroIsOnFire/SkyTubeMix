@@ -38,13 +38,19 @@ import free.rm.skytube.R;
 import free.rm.skytube.app.SkyTubeApp;
 import free.rm.skytube.businessobjects.Logger;
 import free.rm.skytube.businessobjects.YouTube.POJOs.YouTubePlaylist;
+import free.rm.skytube.businessobjects.YouTube.POJOs.YouTubeVideo;
 import free.rm.skytube.businessobjects.interfaces.YouTubePlayerActivityListener;
 import free.rm.skytube.businessobjects.interfaces.YouTubePlayerFragmentInterface;
+import free.rm.skytube.gui.businessobjects.ContinuousPlaybackManager;
 import free.rm.skytube.gui.businessobjects.YoutubePlayerMediaSession;
 import free.rm.skytube.gui.businessobjects.fragments.FragmentEx;
 import free.rm.skytube.gui.fragments.YouTubePlayerTutorialFragment;
 import free.rm.skytube.gui.fragments.YouTubePlayerV1Fragment;
 import free.rm.skytube.gui.fragments.YouTubePlayerV2Fragment;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 
 /**
  * An {@link Activity} that contains an instance of either {@link YouTubePlayerV2Fragment} or
@@ -53,18 +59,28 @@ import free.rm.skytube.gui.fragments.YouTubePlayerV2Fragment;
 public class YouTubePlayerActivity extends BaseActivity implements YouTubePlayerActivityListener {
 	public static final String YOUTUBE_VIDEO = "YouTubePlayerActivity.YouTubeVideo";
 	public static final String YOUTUBE_VIDEO_POSITION = "YouTubePlayerActivity.YouTubeVideoPosition";
+	public static final String YOUTUBE_PLAYLIST_ID = "YouTubePlayerActivity.PlaylistId";
+	public static final String YOUTUBE_VIDEO_AUTOMATIC_TRANSITION = "YouTubePlayerActivity.AutomaticTransition";
 	public static final int YOUTUBE_PLAYER_RESUME_RESULT = 2931;
 
 	private FragmentEx videoPlayerFragment;
 	private YouTubePlayerFragmentInterface fragmentListener;
 	private YoutubePlayerMediaSession mediaSession = null;
+	private final CompositeDisposable continuousPlaybackDisposables = new CompositeDisposable();
+	private ContinuousPlaybackManager continuousPlaybackManager;
+	private Maybe<YouTubeVideo> preparedNormalPlaylistNext;
+	private String preparedNormalPlaylistForVideoId;
+	private boolean defaultPlayer;
+	private boolean continuationInProgress;
+	private boolean activityStarted;
+	private int playbackSessionGeneration;
 
 	public static final String YOUTUBE_VIDEO_OBJ  = "YouTubePlayerActivity.video_object";
 
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		final boolean useDefaultPlayer = useDefaultPlayer();
+		defaultPlayer = useDefaultPlayer();
 		// MediaSession isn't available on SDKs before 21
 		if (Build.VERSION.SDK_INT >= 21) {
 			mediaSession = new YoutubePlayerMediaSession(this);
@@ -72,23 +88,43 @@ public class YouTubePlayerActivity extends BaseActivity implements YouTubePlayer
 
 		// if the user wants to use the default player, then ensure that the activity does not
 		// have a toolbar (actionbar) -- this is as the fragment is taking care of the toolbar
-		if (useDefaultPlayer) {
+		if (defaultPlayer) {
 			setTheme(R.style.NoActionBarActivityTheme);
 		}
 
 		super.onCreate(savedInstanceState);
         setContentView(binding.getRoot());
+		initializePlaybackContextFromIntent();
 
 		// if the tutorial was previously displayed, the just "install" the video player fragment
 		if (SkyTubeApp.getSettings().wasTutorialDisplayedBefore()) {
-			installNewVideoPlayerFragment(useDefaultPlayer);
+			installNewVideoPlayerFragment(defaultPlayer);
 		} else {
 			// display the tutorial
-			FragmentEx tutorialFragment = new YouTubePlayerTutorialFragment().setListener(() -> installNewVideoPlayerFragment(useDefaultPlayer));
+			FragmentEx tutorialFragment = new YouTubePlayerTutorialFragment().setListener(() -> installNewVideoPlayerFragment(defaultPlayer));
 			installFragment(tutorialFragment);
 		}
 
 		registerPlaybackPauseReceiver(true);
+	}
+
+	private void initializePlaybackContextFromIntent() {
+		if (!defaultPlayer) {
+			return;
+		}
+		Bundle extras = getIntent().getExtras();
+		if (extras == null) {
+			return;
+		}
+		YouTubeVideo video = (YouTubeVideo) extras.getSerializable(YOUTUBE_VIDEO_OBJ);
+		if (video == null) {
+			return;
+		}
+		String playlistId = extras.getString(YOUTUBE_PLAYLIST_ID);
+		continuousPlaybackManager = new ContinuousPlaybackManager(video.getId(), playlistId);
+		if (continuousPlaybackManager.isNormalPlaylistContext()) {
+			prepareNormalPlaylistNext(video.getId());
+		}
 	}
 
 
@@ -133,6 +169,15 @@ public class YouTubePlayerActivity extends BaseActivity implements YouTubePlayer
 	// If the back button in the toolbar is hit, save the video's progress (if playback history is not disabled)
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
+		if (item.getItemId() == R.id.continuous_mix_playback_toggle) {
+			if (!defaultPlayer) {
+				return true;
+			}
+			boolean enabled = !item.isChecked();
+			SkyTubeApp.getSettings().setContinuousMixPlaybackEnabled(enabled);
+			item.setChecked(enabled);
+			return true;
+		}
 		// close this activity when the user clicks on the back button (action bar)
 		if (item.getItemId() == android.R.id.home) {
 			fragmentListener.videoPlaybackStopped();
@@ -145,6 +190,140 @@ public class YouTubePlayerActivity extends BaseActivity implements YouTubePlayer
 	@Override
 	public void onOptionsMenuCreated(Menu menu) {
 		super.onOptionsMenuCreated(menu);
+		updateContinuousMixMenu(menu);
+	}
+
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		updateContinuousMixMenu(menu);
+		return super.onPrepareOptionsMenu(menu);
+	}
+
+	private void updateContinuousMixMenu(Menu menu) {
+		MenuItem mixToggle = menu.findItem(R.id.continuous_mix_playback_toggle);
+		if (mixToggle == null) {
+			return;
+		}
+		boolean normalPlaylist = continuousPlaybackManager != null
+				&& continuousPlaybackManager.isNormalPlaylistContext();
+		mixToggle.setVisible(defaultPlayer && !normalPlaylist);
+		mixToggle.setChecked(SkyTubeApp.getSettings().isContinuousMixPlaybackEnabled());
+	}
+
+	@Override
+	public void onVideoPlaybackCompleted(YouTubeVideo video) {
+		if (!defaultPlayer || video == null || continuationInProgress || !canContinuePlayback()) {
+			return;
+		}
+		if (continuousPlaybackManager == null) {
+			continuousPlaybackManager = new ContinuousPlaybackManager(video.getId(), null);
+		}
+
+		continuationInProgress = true;
+		fragmentListener.setTransitionLoading(true);
+		final int requestGeneration = playbackSessionGeneration;
+		final String completedVideoId = video.getId();
+		Maybe<YouTubeVideo> nextRequest;
+		if (continuousPlaybackManager.isNormalPlaylistContext()
+				&& completedVideoId.equals(preparedNormalPlaylistForVideoId)
+				&& preparedNormalPlaylistNext != null) {
+			nextRequest = preparedNormalPlaylistNext;
+		} else {
+			nextRequest = createNextVideoRequest(completedVideoId);
+		}
+
+		continuousPlaybackDisposables.add(nextRequest
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(nextVideo -> handleNextVideo(requestGeneration, completedVideoId, nextVideo),
+						error -> finishContinuation(requestGeneration, completedVideoId, error),
+						() -> finishContinuation(requestGeneration, completedVideoId, null)));
+	}
+
+	@Override
+	public void onManualVideoSelected(String videoId) {
+		playbackSessionGeneration++;
+		continuousPlaybackDisposables.clear();
+		continuousPlaybackManager = new ContinuousPlaybackManager(videoId, null);
+		preparedNormalPlaylistNext = null;
+		preparedNormalPlaylistForVideoId = null;
+		continuationInProgress = false;
+		getIntent().removeExtra(YOUTUBE_PLAYLIST_ID);
+		getIntent().putExtra(YOUTUBE_VIDEO_AUTOMATIC_TRANSITION, false);
+		invalidateOptionsMenu();
+		Logger.i(this, "Continuous playback session reset for manually selected video=%s", videoId);
+	}
+
+	private Maybe<YouTubeVideo> createNextVideoRequest(String currentVideoId) {
+		final ContinuousPlaybackManager manager = continuousPlaybackManager;
+		return Maybe.fromCallable(() -> manager.getNextVideo(currentVideoId,
+				SkyTubeApp.getSettings().isContinuousMixPlaybackEnabled()))
+				.subscribeOn(Schedulers.io());
+	}
+
+	private void prepareNormalPlaylistNext(String currentVideoId) {
+		preparedNormalPlaylistForVideoId = currentVideoId;
+		preparedNormalPlaylistNext = createNextVideoRequest(currentVideoId).cache();
+		continuousPlaybackDisposables.add(preparedNormalPlaylistNext.subscribe(
+				nextVideo -> Logger.i(this, "Playlist next video prepared=%s", nextVideo.getId()),
+				error -> Logger.e(this, "Unable to prepare next playlist video: " + error.getMessage(), error)));
+	}
+
+	private void handleNextVideo(int requestGeneration, String completedVideoId,
+								 YouTubeVideo nextVideo) {
+		if (!isContinuationCurrent(requestGeneration, completedVideoId)) {
+			return;
+		}
+		if (continuousPlaybackManager.isMixContext()
+				&& !SkyTubeApp.getSettings().isContinuousMixPlaybackEnabled()) {
+			finishContinuation(requestGeneration, completedVideoId, null);
+			return;
+		}
+
+		Logger.i(this, "Continuous playback next video=%s", nextVideo.getId());
+		continuationInProgress = false;
+		fragmentListener.setTransitionLoading(false);
+		getIntent().putExtra(YOUTUBE_VIDEO_OBJ, nextVideo);
+		getIntent().putExtra(YOUTUBE_VIDEO_AUTOMATIC_TRANSITION, true);
+		if (!continuousPlaybackManager.isNormalPlaylistContext()) {
+			getIntent().removeExtra(YOUTUBE_PLAYLIST_ID);
+		}
+		installNewVideoPlayerFragment(defaultPlayer);
+		if (continuousPlaybackManager.isNormalPlaylistContext()) {
+			prepareNormalPlaylistNext(nextVideo.getId());
+		} else {
+			preparedNormalPlaylistNext = null;
+			preparedNormalPlaylistForVideoId = null;
+		}
+		invalidateOptionsMenu();
+	}
+
+	private void finishContinuation(int requestGeneration, String completedVideoId,
+								@androidx.annotation.Nullable Throwable error) {
+		if (!isContinuationCurrent(requestGeneration, completedVideoId)) {
+			return;
+		}
+		if (error != null) {
+			Logger.e(this, "Continuous playback lookup failed for video=" + completedVideoId, error);
+		} else {
+			Logger.i(this, "Continuous playback stopped after video=%s", completedVideoId);
+		}
+		continuationInProgress = false;
+		fragmentListener.setTransitionLoading(false);
+	}
+
+	private boolean isContinuationCurrent(int requestGeneration, String completedVideoId) {
+		if (requestGeneration != playbackSessionGeneration || fragmentListener == null
+				|| !canContinuePlayback()) {
+			return false;
+		}
+		YouTubeVideo currentVideo = fragmentListener.getYouTubeVideo();
+		return currentVideo != null && completedVideoId.equals(currentVideo.getId());
+	}
+
+	private boolean canContinuePlayback() {
+		return activityStarted && !isFinishing()
+				&& (Build.VERSION.SDK_INT < 17 || !isDestroyed())
+				&& !getSupportFragmentManager().isStateSaved();
 	}
 
 	@Override
@@ -223,13 +402,14 @@ public class YouTubePlayerActivity extends BaseActivity implements YouTubePlayer
 		FragmentManager fragmentManager = getSupportFragmentManager();
 		FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
 
-		fragmentTransaction.add(R.id.fragment_container, fragment);
+		fragmentTransaction.replace(R.id.fragment_container, fragment);
 		fragmentTransaction.commit();
 	}
 
 
 	@Override
 	protected void onStart() {
+		activityStarted = true;
 		if (mediaSession != null) {
 			mediaSession.setActive(true);
 		}
@@ -252,6 +432,10 @@ public class YouTubePlayerActivity extends BaseActivity implements YouTubePlayer
 
 	@Override
 	protected void onStop() {
+		activityStarted = false;
+		playbackSessionGeneration++;
+		continuousPlaybackDisposables.clear();
+		continuationInProgress = false;
 		if (mediaSession != null) {
 			mediaSession.setActive(false);
 		}
@@ -317,6 +501,12 @@ public class YouTubePlayerActivity extends BaseActivity implements YouTubePlayer
 		}
 		registerPlaybackPauseReceiver(false);
 		super.finish();
+	}
+
+	@Override
+	protected void onDestroy() {
+		continuousPlaybackDisposables.clear();
+		super.onDestroy();
 	}
 
 
