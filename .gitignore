@@ -42,3 +42,4 @@ proguard/
 .DS_Store
 /captures
 .idea
+/.docs

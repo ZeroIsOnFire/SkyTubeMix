@@ -41,6 +41,10 @@ public class PrivacyControlDialog {
 	}
 
 	public void show() {
+		show(null);
+	}
+
+	public void show(@androidx.annotation.Nullable Runnable onDismiss) {
 		final DialogPrivacyControlsBinding binding =
 				DialogPrivacyControlsBinding.inflate(LayoutInflater.from(context));
 		final Settings settings = SkyTubeApp.getSettings();
@@ -48,14 +52,18 @@ public class PrivacyControlDialog {
 		binding.privacyControlSbSwitch.setChecked(settings.isSponsorblockEnabled());
 		binding.privacyControlRydSwitch.setChecked(settings.isUseDislikeApi());
 
-		new AlertDialog.Builder(context)
+		final AlertDialog dialog = new AlertDialog.Builder(context)
 				.setTitle(R.string.privacy_control_title)
 				.setView(binding.getRoot())
-				.setPositiveButton(R.string.ok, (dialog, which) -> {
+				.setPositiveButton(R.string.ok, (dialogInterface, which) -> {
 					settings.setSponsorblockEnabled(binding.privacyControlSbSwitch.isChecked());
 					settings.setUseDislikeApi(binding.privacyControlRydSwitch.isChecked());
 				})
 				.setNegativeButton(R.string.cancel, null)
-				.show();
+				.create();
+		if (onDismiss != null) {
+			dialog.setOnDismissListener(ignored -> onDismiss.run());
+		}
+		dialog.show();
 	}
 }

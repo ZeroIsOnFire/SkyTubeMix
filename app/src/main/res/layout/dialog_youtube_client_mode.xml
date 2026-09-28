@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ SkyTube
+  ~ Copyright (C) 2026
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation (version 3 of the License).
+  -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingLeft="24dp"
+    android:paddingTop="8dp"
+    android:paddingRight="24dp"
+    android:paddingBottom="16dp">
+
+    <TextView
+        android:id="@+id/youtube_client_mode_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/youtube_client_mode_dialog_description" />
+
+    <RadioGroup
+        android:id="@+id/youtube_client_mode_choices"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp">
+
+        <RadioButton
+            android:id="@+id/youtube_client_mode_vision_fallback"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/youtube_client_mode_vision_fallback" />
+
+        <RadioButton
+            android:id="@+id/youtube_client_mode_vision_only"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/youtube_client_mode_vision_only_warning" />
+
+        <RadioButton
+            android:id="@+id/youtube_client_mode_standard_android"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/youtube_client_mode_standard_android" />
+    </RadioGroup>
+
+</LinearLayout>

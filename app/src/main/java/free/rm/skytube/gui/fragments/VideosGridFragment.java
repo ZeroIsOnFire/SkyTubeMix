@@ -27,8 +27,6 @@ import android.widget.GridView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
 
-import com.bumptech.glide.Glide;
-
 import free.rm.skytube.R;
 import free.rm.skytube.businessobjects.VideoCategory;
 import free.rm.skytube.databinding.VideosGridviewBinding;
@@ -77,7 +75,6 @@ public abstract class VideosGridFragment extends BaseVideosGridFragment {
         gridviewBinding.gridView.setAdapter(null);
         gridviewBinding = null;
         super.onDestroyView();
-        Glide.get(requireContext()).clearMemory();
     }
 
     void scrollToTop() {

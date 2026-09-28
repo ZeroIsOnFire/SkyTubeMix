@@ -38,5 +38,7 @@ public interface YouTubePlayerFragmentInterface {
 	 */
 	void play();
 
+	void setTransitionLoading(boolean loading);
+
 	void setPlaybackStateListener(PlaybackStateListener listener);
 }

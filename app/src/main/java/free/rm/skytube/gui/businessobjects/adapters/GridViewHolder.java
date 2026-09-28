@@ -24,6 +24,7 @@ import android.view.View;
 
 import androidx.annotation.MenuRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -62,6 +63,7 @@ public class GridViewHolder extends RecyclerView.ViewHolder implements Serializa
 	private Context context = null;
 	private MainActivityListener mainActivityListener;
 	private boolean showChannelInfo;
+	private String playbackPlaylistId;
 
 	private final transient VideoCellBinding binding;
 	private final transient CompositeDisposable compositeDisposable;
@@ -87,7 +89,7 @@ public class GridViewHolder extends RecyclerView.ViewHolder implements Serializa
 
 		binding.thumbnailImageView.setOnClickListener(thumbnailView -> {
 			if (currentCard instanceof YouTubeVideo) {
-				YouTubePlayer.launch((YouTubeVideo) currentCard, context);
+				YouTubePlayer.launch((YouTubeVideo) currentCard, playbackPlaylistId, context);
 			} else if (currentCard instanceof YouTubePlaylist) {
 				mainActivityListener.onPlaylistClick((YouTubePlaylist) currentCard);
 			} else if (currentCard instanceof YouTubeChannel) {
@@ -119,10 +121,12 @@ public class GridViewHolder extends RecyclerView.ViewHolder implements Serializa
 	 *
 	 * @param currentCard		{@link YouTubeVideo} or {@link YouTubePlaylist} instance.
 	 */
-	void updateInfo(@NonNull CardData currentCard, Context context, MainActivityListener listener) {
+	void updateInfo(@NonNull CardData currentCard, Context context, MainActivityListener listener,
+					@Nullable String playbackPlaylistId) {
 		this.currentCard = currentCard;
 		this.context = context;
 		this.mainActivityListener = listener;
+		this.playbackPlaylistId = playbackPlaylistId;
 		updateViewsData();
 	}
 

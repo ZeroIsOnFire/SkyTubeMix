@@ -65,6 +65,7 @@ public class VideoGridAdapter extends RecyclerViewAdapterEx<CardData, GridViewHo
 	 * Current video category
 	 */
 	private VideoCategory currentVideoCategory = null;
+	private String currentQuery = null;
 
 	// This allows the grid items to pass messages back to MainActivity
 	protected MainActivityListener listener;
@@ -147,7 +148,7 @@ public class VideoGridAdapter extends RecyclerViewAdapterEx<CardData, GridViewHo
 	 */
 	public void setVideoCategory(VideoCategory videoCategory, String searchQuery) {
 		// do not change the video category if its the same!
-		if (videoCategory == currentVideoCategory)
+		if (videoCategory == currentVideoCategory && Objects.equals(searchQuery, currentQuery))
 			return;
 
 		try {
@@ -167,6 +168,7 @@ public class VideoGridAdapter extends RecyclerViewAdapterEx<CardData, GridViewHo
 
 			// set current video category
 			this.currentVideoCategory = videoCategory;
+			this.currentQuery = searchQuery;
 
 		} catch (IOException e) {
 			Logger.e(this, "Could not init " + videoCategory, e);
@@ -227,7 +229,10 @@ public class VideoGridAdapter extends RecyclerViewAdapterEx<CardData, GridViewHo
 
 	@Override
 	public void onBindViewHolder(@NonNull GridViewHolder viewHolder, int position) {
-		viewHolder.updateInfo(get(position), getContext(), listener);
+		String playlistId = currentVideoCategory == VideoCategory.PLAYLIST_VIDEOS
+				|| currentVideoCategory == VideoCategory.MIXED_PLAYLIST_VIDEOS
+				? currentQuery : null;
+		viewHolder.updateInfo(get(position), getContext(), listener, playlistId);
 
 		// if it reached the bottom of the list, then try to get the next page of videos
 		if (position >= getItemCount() - 1) {

@@ -37,9 +37,33 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        app:key="youtube_compatibility"
+        app:title="@string/pref_category_youtube_compatibility"
+        app:iconSpaceReserved="false">
+
+        <ListPreference
+            app:key="@string/pref_key_youtube_client_mode"
+            app:title="@string/pref_title_youtube_client_mode"
+            app:summary="@string/pref_summary_youtube_client_mode"
+            app:entries="@array/youtube_client_mode_entries"
+            app:entryValues="@array/youtube_client_mode_values"
+            app:defaultValue="@string/youtube_client_mode_vision_fallback_value"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         app:key="videoplayer_resolutions"
         app:title="@string/pref_category_video_resolutions"
         app:iconSpaceReserved="false">
+
+    <ListPreference
+        app:key="@string/pref_key_performance_mode"
+        app:title="@string/pref_title_performance_mode"
+        app:summary="@string/pref_summary_performance_mode"
+        app:entries="@array/performance_mode_entries"
+        app:entryValues="@array/performance_mode_values"
+        app:iconSpaceReserved="false" />
 
     <ListPreference
         app:key="@string/pref_key_maximum_res"

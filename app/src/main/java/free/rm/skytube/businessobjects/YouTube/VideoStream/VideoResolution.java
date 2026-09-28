@@ -74,6 +74,29 @@ public enum VideoResolution {
 		return verticalPixels + "p";
 	}
 
+	public int getId() {
+		return id;
+	}
+
+	public int getVerticalPixels() {
+		return verticalPixels;
+	}
+
+	/**
+	 * Returns the highest supported resolution that does not exceed the supplied physical
+	 * display capability.  If the capability is invalid or below 144p, use the smallest
+	 * playable resolution as a defensive fallback.
+	 */
+	public static VideoResolution highestSupportedAtMost(int verticalPixels) {
+		VideoResolution selected = RES_144P;
+		for (VideoResolution resolution : values()) {
+			if (resolution != RES_UNKNOWN && resolution.verticalPixels <= verticalPixels) {
+				selected = resolution;
+			}
+		}
+		return selected;
+	}
+
 
 	/**
 	 * Returns a {@link VideoResolution} that is next-step lower than the current one.

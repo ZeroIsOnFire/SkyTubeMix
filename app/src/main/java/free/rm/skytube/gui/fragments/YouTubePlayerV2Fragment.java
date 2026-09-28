@@ -18,6 +18,7 @@
 package free.rm.skytube.gui.fragments;
 
 import static free.rm.skytube.gui.activities.YouTubePlayerActivity.YOUTUBE_VIDEO_OBJ;
+import static free.rm.skytube.gui.activities.YouTubePlayerActivity.YOUTUBE_VIDEO_AUTOMATIC_TRANSITION;
 
 import android.app.Activity;
 import android.content.Context;
@@ -132,6 +133,8 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
 
     private BaseExpandableListAdapter commentsAdapter = null;
     private YouTubePlayerActivityListener listener = null;
+    private View previousVideoButton;
+    private View nextVideoButton;
     private PlayerViewGestureHandler playerViewGestureHandler;
 
     private PlaybackSpeedController playbackSpeedController;
@@ -139,6 +142,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
     private final CompositeDisposable compositeDisposable = new CompositeDisposable();
     private final ChannelActionHandler actionHandler = new ChannelActionHandler(compositeDisposable);
     private boolean videoIsPlaying;
+    private boolean playbackCompletionReported;
     private PlaybackStateListener playbackStateListener = null;
 
     private SBVideoInfo sponsorBlockVideoInfo;
@@ -216,6 +220,11 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
     protected void setYouTubeVideo(YouTubeVideo video) {
         this.youTubeVideo = video;
         this.videoId = video != null ? video.getVideoId() : null;
+        playbackCompletionReported = false;
+        // A replacement fragment configures its controls before reading the new video from the
+        // activity intent. Refresh after assignment so next/previous are not left disabled with
+        // the temporary "no current video" state.
+        refreshPlaybackNavigationControls();
     }
     @Override
     public void onAttach(@NonNull Context context) {
@@ -244,6 +253,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
         fragmentBinding.playerView.requestFocus();
 
         setupPlayer();
+        setupPlaybackNavigationControls();
 
         // ensure that videos are played in their correct aspect ratio
         fragmentBinding.playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
@@ -268,6 +278,27 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
         playbackSpeedController.setPlaybackSpeed(playbackSpeed);
 
         Linker.configure(videoDescriptionBinding.videoDescDescription, this);
+    }
+
+    private void setupPlaybackNavigationControls() {
+        previousVideoButton = fragmentBinding.getRoot().findViewById(R.id.previous_video);
+        nextVideoButton = fragmentBinding.getRoot().findViewById(R.id.next_video);
+        previousVideoButton.setOnClickListener(view -> listener.onPreviousVideoRequested());
+        nextVideoButton.setOnClickListener(view -> listener.onNextVideoRequested());
+        refreshPlaybackNavigationControls();
+    }
+
+    public void refreshPlaybackNavigationControls() {
+        if (previousVideoButton == null || nextVideoButton == null || listener == null) {
+            return;
+        }
+        setNavigationButtonEnabled(previousVideoButton, listener.canNavigateToPreviousVideo());
+        setNavigationButtonEnabled(nextVideoButton, listener.canNavigateToNextVideo());
+    }
+
+    private void setNavigationButtonEnabled(View button, boolean enabled) {
+        button.setEnabled(enabled);
+        button.setAlpha(enabled ? 1.0f : 0.35f);
     }
 
     private synchronized void setupPlayer() {
@@ -301,6 +332,12 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
                         } else {
                             playbackStateListener.ended();
                         }
+                    }
+
+                    if (playbackState == Player.STATE_ENDED && !playbackCompletionReported
+                            && youTubeVideo != null) {
+                        playbackCompletionReported = true;
+                        listener.onVideoPlaybackCompleted(youTubeVideo);
                     }
                 }
 
@@ -371,10 +408,15 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
     private void setUpHUDAndPlayVideo() {
         setupInfoDisplay(youTubeVideo);
 
-        new ResumeVideoTask(getContext(), youTubeVideo.getId(), position -> {
-            playerInitialPosition = position;
-            YouTubePlayerV2Fragment.this.loadVideo();
-        }).ask();
+        if (requireActivity().getIntent().getBooleanExtra(YOUTUBE_VIDEO_AUTOMATIC_TRANSITION, false)) {
+            playerInitialPosition = 0;
+            loadVideo();
+        } else {
+            new ResumeVideoTask(getContext(), youTubeVideo.getId(), position -> {
+                playerInitialPosition = position;
+                YouTubePlayerV2Fragment.this.loadVideo();
+            }).ask();
+        }
     }
 
     private void setupInfoDisplay(YouTubeVideo video) {
@@ -519,6 +561,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
      *                                 using mobile network data (i.e. 4g).
      */
     private void loadVideo(boolean showMobileNetworkWarning) {
+        playbackCompletionReported = false;
         Context ctx = getContext();
         compositeDisposable.add(
                 DownloadedVideosDb.getVideoDownloadsDb().getDownloadedFileStatus(ctx, videoId)
@@ -821,6 +864,8 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
         player = null;
         fragmentBinding.playerView.setPlayer(null);
         videoDescriptionBinding.videoDescSubscribeButton.clearBackgroundTasks();
+        previousVideoButton = null;
+        nextVideoButton = null;
         fragmentBinding = null;
         videoDescriptionBinding = null;
     }
@@ -836,6 +881,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
                     player.seekTo(timestamp.longValue() * 1000L);
                 }
             } else {
+                listener.onManualVideoSelected(newVideoId.getId());
                 openVideo(newVideoId);
             }
             return true;
@@ -1267,6 +1313,13 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
     @Override
     public void play() {
         player.setPlayWhenReady(true);
+    }
+
+    @Override
+    public void setTransitionLoading(boolean loading) {
+        if (fragmentBinding != null) {
+            fragmentBinding.loadingVideoView.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
     }
 
     @Override
