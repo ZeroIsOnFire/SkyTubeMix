@@ -146,6 +146,29 @@ class ContinuousPlaybackManagerTest {
     }
 
     @Test
+    void normalPlaylistExposesVideosBeforeInitialAnchor() throws Exception {
+        ContinuousPlaybackManager manager = manager("C", "PL",
+                factory("PL", pages(page("A", "B", "C", "D"))));
+
+        assertEquals("D", manager.getNextVideo("C", false).getId());
+        assertTrue(manager.hasPreviousPlaylistVideo());
+        assertEquals("B", manager.getPreviousPlaylistVideo("C").getId());
+        assertEquals("A", manager.getPreviousPlaylistVideo("B").getId());
+        assertFalse(manager.hasPreviousPlaylistVideo());
+        assertNull(manager.getPreviousPlaylistVideo("A"));
+    }
+
+    @Test
+    void previousPlaylistVideosCanComeFromEarlierPages() throws Exception {
+        ContinuousPlaybackManager manager = manager("C", "PL",
+                factory("PL", pages(page("A", "B"), page("C"))));
+
+        assertNull(manager.getNextVideo("C", false));
+        assertEquals("B", manager.getPreviousPlaylistVideo("C").getId());
+        assertEquals("A", manager.getPreviousPlaylistVideo("B").getId());
+    }
+
+    @Test
     void firstValidVideoIsUsedWhenSourceIsMissingFromMix() throws Exception {
         ContinuousPlaybackManager manager = manager("A", null,
                 factory("RDA", pages(page("X", "Y"))));

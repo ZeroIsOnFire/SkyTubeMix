@@ -63,6 +63,7 @@ public final class ContinuousPlaybackManager {
     private final PageSourceFactory pageSourceFactory;
     private final VideoFilter videoFilter;
     private final Deque<YouTubeVideo> queuedVideos = new ArrayDeque<>();
+    private final Deque<YouTubeVideo> playlistVideosBeforeAnchor = new ArrayDeque<>();
     private final Set<String> playedVideoIds = new HashSet<>();
 
     private Mode mode;
@@ -102,6 +103,7 @@ public final class ContinuousPlaybackManager {
         anchorFound = false;
         exhausted = false;
         queuedVideos.clear();
+        playlistVideosBeforeAnchor.clear();
         playedVideoIds.clear();
         if (currentVideoId != null) {
             playedVideoIds.add(currentVideoId);
@@ -136,6 +138,31 @@ public final class ContinuousPlaybackManager {
         return pollNextValidVideo(currentVideoId);
     }
 
+    public synchronized boolean hasPreviousPlaylistVideo() {
+        return mode == Mode.PLAYLIST && !playlistVideosBeforeAnchor.isEmpty();
+    }
+
+    /**
+     * Returns the playlist item immediately before the original playback anchor. Runtime history
+     * is held by the player activity; this deque only covers items that preceded the first video.
+     */
+    @Nullable
+    public synchronized YouTubeVideo getPreviousPlaylistVideo(String currentVideoId) {
+        if (mode != Mode.PLAYLIST) {
+            return null;
+        }
+        while (!playlistVideosBeforeAnchor.isEmpty()) {
+            YouTubeVideo candidate = playlistVideosBeforeAnchor.removeLast();
+            String candidateId = candidate != null ? candidate.getId() : null;
+            if (candidateId == null || candidateId.equals(currentVideoId)) {
+                continue;
+            }
+            playedVideoIds.add(candidateId);
+            return candidate;
+        }
+        return null;
+    }
+
     private void beginMix(String currentVideoId) throws Exception {
         mode = Mode.MIX;
         playlistId = MIX_PLAYLIST_PREFIX + currentVideoId;
@@ -147,14 +174,19 @@ public final class ContinuousPlaybackManager {
 
     private void findNormalPlaylistAnchor(String currentVideoId) throws Exception {
         ensurePageSource();
+        List<YouTubeVideo> videosBeforeAnchor = new ArrayList<>();
         while (!anchorFound && !exhausted) {
             List<YouTubeVideo> page = safePage(pageSource.getNextPage());
             int currentIndex = findVideo(page, currentVideoId);
             if (currentIndex >= 0) {
                 anchorFound = true;
+                videosBeforeAnchor.addAll(filtered(page.subList(0, currentIndex)));
+                enqueueBeforeAnchor(videosBeforeAnchor, currentVideoId);
                 enqueueFiltered(page.subList(currentIndex + 1, page.size()));
             } else if (!pageSource.hasNextPage()) {
                 exhausted = true;
+            } else {
+                videosBeforeAnchor.addAll(filtered(page));
             }
         }
     }
@@ -212,10 +244,20 @@ public final class ContinuousPlaybackManager {
     }
 
     private void enqueueFiltered(List<YouTubeVideo> videos) {
-        List<YouTubeVideo> filtered = videoFilter.filter(safePage(videos));
-        if (filtered != null) {
-            queuedVideos.addAll(filtered);
+        queuedVideos.addAll(filtered(videos));
+    }
+
+    private void enqueueBeforeAnchor(List<YouTubeVideo> videos, String currentVideoId) {
+        for (YouTubeVideo video : videos) {
+            if (video != null && video.getId() != null && !video.getId().equals(currentVideoId)) {
+                playlistVideosBeforeAnchor.addLast(video);
+            }
         }
+    }
+
+    private List<YouTubeVideo> filtered(List<YouTubeVideo> videos) {
+        List<YouTubeVideo> filtered = videoFilter.filter(safePage(videos));
+        return filtered != null ? filtered : Collections.emptyList();
     }
 
     private static int findVideo(List<YouTubeVideo> videos, String videoId) {

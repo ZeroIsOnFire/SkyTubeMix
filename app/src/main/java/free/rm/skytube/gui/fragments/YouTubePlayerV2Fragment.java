@@ -133,6 +133,8 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
 
     private BaseExpandableListAdapter commentsAdapter = null;
     private YouTubePlayerActivityListener listener = null;
+    private View previousVideoButton;
+    private View nextVideoButton;
     private PlayerViewGestureHandler playerViewGestureHandler;
 
     private PlaybackSpeedController playbackSpeedController;
@@ -219,6 +221,10 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
         this.youTubeVideo = video;
         this.videoId = video != null ? video.getVideoId() : null;
         playbackCompletionReported = false;
+        // A replacement fragment configures its controls before reading the new video from the
+        // activity intent. Refresh after assignment so next/previous are not left disabled with
+        // the temporary "no current video" state.
+        refreshPlaybackNavigationControls();
     }
     @Override
     public void onAttach(@NonNull Context context) {
@@ -247,6 +253,7 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
         fragmentBinding.playerView.requestFocus();
 
         setupPlayer();
+        setupPlaybackNavigationControls();
 
         // ensure that videos are played in their correct aspect ratio
         fragmentBinding.playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
@@ -271,6 +278,27 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
         playbackSpeedController.setPlaybackSpeed(playbackSpeed);
 
         Linker.configure(videoDescriptionBinding.videoDescDescription, this);
+    }
+
+    private void setupPlaybackNavigationControls() {
+        previousVideoButton = fragmentBinding.getRoot().findViewById(R.id.previous_video);
+        nextVideoButton = fragmentBinding.getRoot().findViewById(R.id.next_video);
+        previousVideoButton.setOnClickListener(view -> listener.onPreviousVideoRequested());
+        nextVideoButton.setOnClickListener(view -> listener.onNextVideoRequested());
+        refreshPlaybackNavigationControls();
+    }
+
+    public void refreshPlaybackNavigationControls() {
+        if (previousVideoButton == null || nextVideoButton == null || listener == null) {
+            return;
+        }
+        setNavigationButtonEnabled(previousVideoButton, listener.canNavigateToPreviousVideo());
+        setNavigationButtonEnabled(nextVideoButton, listener.canNavigateToNextVideo());
+    }
+
+    private void setNavigationButtonEnabled(View button, boolean enabled) {
+        button.setEnabled(enabled);
+        button.setAlpha(enabled ? 1.0f : 0.35f);
     }
 
     private synchronized void setupPlayer() {
@@ -836,6 +864,8 @@ public class YouTubePlayerV2Fragment extends ImmersiveModeFragment implements Yo
         player = null;
         fragmentBinding.playerView.setPlayer(null);
         videoDescriptionBinding.videoDescSubscribeButton.clearBackgroundTasks();
+        previousVideoButton = null;
+        nextVideoButton = null;
         fragmentBinding = null;
         videoDescriptionBinding = null;
     }

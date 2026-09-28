@@ -15,4 +15,12 @@ public interface YouTubePlayerActivityListener {
 	void onVideoPlaybackCompleted(YouTubeVideo video);
 
 	void onManualVideoSelected(String videoId);
+
+	void onPreviousVideoRequested();
+
+	void onNextVideoRequested();
+
+	boolean canNavigateToPreviousVideo();
+
+	boolean canNavigateToNextVideo();
 }
